@@ -110,7 +110,7 @@ async function jdBeauty(help = true) {
   await getIsvToken()
   await getIsvToken2()
   await getActInfo()
-  await getTaskList()
+  await getTaskList(help)
   await getDailyMatch()
   // await marketGoods()
   if(help)await helpFriends()
@@ -231,6 +231,13 @@ function checkLogin() {
             console.log(`当前体力：${$.strength}`)
             // console.log(JSON.stringify(data))
             $.curLevel = data.role.gameInfo.levelId || 40103
+            let allLevels = data.role.allLevels
+            let lastLevel = allLevels[allLevels.length - 1]
+            if (lastLevel.maxStar == 0) {
+              $.level = allLevels.length - 1
+            }else {
+              $.level = allLevels.length
+            }
             $.not3Star = []
             for(let level of data.role.allLevels){
               if(level.maxStar!==3){
@@ -241,6 +248,7 @@ function checkLogin() {
               console.log(`当前尚未三星的关卡为：${$.not3Star.join(',')}`)
             // SecrectUtil.InitEncryptInfo($.gameToken, $.gameId)
           }
+
         }
       } catch (e) {
         $.logErr(e, resp)
@@ -251,7 +259,7 @@ function checkLogin() {
   })
 }
 
-function getTaskList() {
+function getTaskList(help = true) {
   return new Promise(resolve => {
     $.post(taskUrl("platform/active/jingdong/gametasks", {
         "activeid": ACT_ID,
@@ -267,8 +275,10 @@ function getTaskList() {
           } else {
             if (safeGet(data)) {
               data = JSON.parse(data)
+              var hasTask = false
               for (let task of data.tasks) {
                 if (task.res.sName === "闯关集星") {
+                  hasTask = true
                   $.level = task.state.value + 1
                   console.log(`当前关卡：${$.level}`)
                   while ($.strength >= 5 && $.level <= 240) {
@@ -366,6 +376,21 @@ function getTaskList() {
                 } else if(task.res.sName === '好友助力') {
                   console.log(`去领取好友助力任务`)
                   await finishTask(task.res.sID)
+                }
+              }
+
+              if (!hasTask && help) {
+                console.log(`狗东把任务删了`)
+                while ($.strength >= 5 && $.level <= 240) {
+                  await beginLevel()
+                }
+                if($.not3Star.length && $.strength >= 5){
+                  console.log(`去完成尚未三星的关卡`)
+                  for(let level of $.not3Star){
+                    $.level = parseInt(level)
+                    await beginLevel()
+                    if($.strength<5) break
+                  }
                 }
               }
             }
